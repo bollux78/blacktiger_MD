@@ -31,6 +31,7 @@
 #include "statue_shell.h"
 #include "npc.h"
 #include "world.h"
+#include "map_strips.h"
 #include <genesis.h>
 #include "sprite_atlas_index.inc"
 #define BG_SLOTS 996
@@ -49,7 +50,7 @@ static u8 line_count[28], sprite_slot_for_key[16384] __attribute__((aligned(2)))
 static u16 eviction, sprite_eviction, sprite_count, sprite_uploads, epoch;
 static s16 old_x, old_y;
 static u8 terrain_wrapped;
-static const u16 *terrain_map;
+static const u16 *const *terrain_map;
 static const u32 *terrain_patterns;
 static u16 terrain_slots, terrain_width, terrain_height, terrain_shift;
 static const Backdrop *terrain_backdrop;
@@ -134,7 +135,7 @@ static void pin_column(s16 x,s16 y,s16 delta) {
  for(i=0;i<29;i++,y++,at=(at+64)&2047) {
   u16 word,v,my=WORLD_WRAP_Y?((u16)y&(terrain_height-1)):(u16)y;
   if(delta>0){
-   word=my<terrain_height?terrain_map[(u16)((my<<terrain_shift)+mx)]:0;
+   word=my<terrain_height?map_word(terrain_map,(u16)((my<<terrain_shift)+mx)):0;
    if(my<terrain_height){
     if((world_opened & world_rows[my]) || bonus_rows[my>>1])word=dynamic_word(mx,my,word);
     word=backdrop_word(word);
@@ -148,12 +149,14 @@ static void pin_row(s16 x,s16 y,s16 delta) {
  u16 i,base=(y&31)<<6,rx=x&63,mx=(u16)x&(terrain_width-1);
  u16 my=WORLD_WRAP_Y?((u16)y&(terrain_height-1)):(u16)y;
  u8 valid=my<terrain_height;
- const u16 *map=valid?terrain_map+(u16)(my<<terrain_shift):terrain_map;
+ const u16 *const *strips=valid?terrain_map+(u16)(my<<(terrain_shift-MAP_STRIP_SHIFT)):terrain_map;
+ const u16 *map=valid?strips[mx>>MAP_STRIP_SHIFT]:0;
  u8 dynamic=valid && ((world_opened & world_rows[my]) || bonus_rows[my>>1]);
  for(i=0;i<33;i++,rx=(rx+1)&63,mx=(mx+1)&(terrain_width-1)) {
   u16 word,v;
   if(delta>0){
-   word=valid?map[mx]:0;
+   if(valid && !(mx & MAP_STRIP_MASK))map=strips[mx>>MAP_STRIP_SHIFT];
+   word=valid?map[mx & MAP_STRIP_MASK]:0;
    if(valid){if(dynamic)word=dynamic_word(mx,my,word);word=backdrop_word(word);}
    visible_words[base+rx]=word;
   }else word=visible_words[base+rx];
@@ -183,7 +186,7 @@ static void terrain_cell(s16 x,u16 y,u8 pass) {
  x=terrain_view_x(x);
  if(x<old_x || x>=old_x+33 || vy<old_y || vy>=old_y+29)return;
  x=(u16)x&(terrain_width-1);
- original=r->map[(y<<(r->width==2048?8:7))+x];
+ original=map_word(r->map,(y<<(r->width==2048?8:7))+x);
  old=world_override(x,y,bonus_word_state(x,y,original,last_bonus_entered,last_bonus_phases),last_opened);
  next=world_word(x,y,original);
  terrain_change(x,y,old,next,pass);

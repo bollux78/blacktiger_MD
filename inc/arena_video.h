@@ -2,7 +2,7 @@
 #define ARENA_VIDEO_H
 #include <genesis.h>
 extern u8 arena_video_active;
-const u16 *arena_video_map(void);
+const u16 *const *arena_video_map(void);
 const u32 *arena_video_pattern(u16 tile);
 u16 arena_video_columns(u16 count,u8 *lines);
 void arena_video_init(void);

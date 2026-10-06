@@ -14,9 +14,14 @@ for y in range(64):
 rom=(ROOT/'out/release/rom.bin').read_bytes();checks=[]
 r=Runner(ROOT/'out/release/rom.bin');r.run(100);r.start_game(exploration=True);r.run(20)
 s=state(r);s.round=4;s.mode=4;s.mode_timer=0;put(r,s);r.run(80)
-kind=next(i for i,v in enumerate(rom[r.symbols['skeleton_kinds']:r.symbols['skeleton_kinds']+66]) if v==0)
-row=next(i for i in range(160) if struct.unpack_from('>4H',rom,r.symbols['spawn4']+i*8)[2]==kind)
-root=json.loads((ROOT/'reference/skeleton.json').read_text())['profiles'][0]['roots'][13]
+# Use a skeleton actually placed in this level. The old fixture searched 160
+# rows past the 88-entry spawn table for a profile-0 skeleton absent in Round 5;
+# unrelated data after that table could accidentally satisfy the search.
+kinds=rom[r.symbols['skeleton_kinds']:r.symbols['skeleton_kinds']+66]
+count=json.loads((ROOT/'reports/assets.json').read_text())['rounds'][4]['spawns']
+row,kind=next((i,kind) for i in range(count)
+              if (kind:=struct.unpack_from('>4H',rom,r.symbols['spawn4']+i*8)[2])<len(kinds) and kinds[kind]!=255)
+root=json.loads((ROOT/'reference/skeleton.json').read_text())['profiles'][kinds[kind]]['roots'][13]
 for x,y in sorted(expected):
  s=state(r);s.mode=2;put(r,s);r.run(20)
  s=state(r);s.cam_x=x-112;s.cam_y=max(0,y-176);s.p.x=x*256;s.p.y=(y-96)*256;s.p.vx=s.p.vy=0

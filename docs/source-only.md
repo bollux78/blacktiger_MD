@@ -5,6 +5,7 @@ Tracked inputs are native port code, offline converters/oracle scripts, tests, d
 Ignored local outputs include:
 
 - `assets/source/`, `assets/ui/`, `res/generated/`;
+- optional private `src/private_boot/` (also rejected by the index audit);
 - generated `src/*.inc`, `src/data.c`, `src/actor_dispatch.c`, `inc/assets.h`, and resource declarations;
 - `reference/` observation data and `reports/` data/media (Markdown documentation remains tracked);
 - `out/`, `dist/`, `screenshots/`, `.venv/`, and `.local/`.

@@ -49,7 +49,36 @@ BLACKTIGER_SOURCE=/path/to/package make
 
 The repository's manifest remains authoritative; a package's own lock file cannot substitute a different revision. The offline tools execute the supplied arcade ROM only to derive local data. No arcade program is linked into the cartridge.
 
-Open the locally built `out/release/rom.bin` in a Genesis emulator. The original Black Tiger story intro remains. The earlier Sonic/Shinobi/Street Fighter boot sequence is omitted so those additional games are not required or distributed.
+Open the locally built `out/release/rom.bin` in a Genesis emulator. The original Black Tiger story intro remains. The default source-only build omits the additional SEGA/CAPCOM boot sequence. A private local kit can enable it as described below.
+
+## Release version and optional private boot logos
+
+`VERSION` is the release version (currently `1.7`). The asset generator draws the
+small title stamp from this file, and `tools/package.py` uses it for the default
+`blacktiger_MD_v<version>.bin` filename. Changing it invalidates the asset cache.
+The stamp accepts numeric `major.minor` versions that fit its 16-pixel slot;
+unsupported text or widths fail the build.
+
+The source tree has a weak `boot_logos_private()` hook. If you already have the
+private kit locally, enable it before building:
+
+```sh
+mkdir -p src/private_boot
+cp .local/private-boot-kit/*.c .local/private-boot-kit/*.h src/private_boot/
+make
+.venv/bin/python tests/test_boot_logos_runtime.py --variant private
+```
+
+The kit directory and hook name remain unchanged. `src/private_boot/` is ignored
+and rejected by the staged-source audit; never commit its contents. Move that
+folder outside `src/` and rebuild to return to source-only startup. The boot test
+automatically checks the linked variant during `make test`; `--variant source`
+explicitly requires the source-only path. Captures remain local under `reports/`.
+
+Map storage shares identical 32-word strips through ROM pointer tables. It uses
+no unpacking buffer, mapper, or bank switching. Full maps remain local build
+fixtures for exhaustive comparison with the packed maps. The ROM retains the
+4 MiB limit, `SEGA MEGA DRIVE` header and SRAM at `$200001`.
 
 ## Controls
 

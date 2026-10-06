@@ -30,6 +30,7 @@ test: all
 	.venv/bin/python tests/test_review_fixes_runtime.py
 	.venv/bin/python tests/test_cadence_stats.py
 	.venv/bin/python tests/test_animation_step.py
+	.venv/bin/python tests/test_map_strips.py
 	.venv/bin/python tests/test_terrain_strips.py
 	.venv/bin/python tests/test_sprite_lines.py
 	.venv/bin/python tests/test_weapon_contact_batch.py

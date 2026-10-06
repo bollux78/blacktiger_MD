@@ -76,7 +76,8 @@ out+=arr('arena_patterns','u32',[hex(int.from_bytes(b[i:i+4],'big'))for b in pat
 far_ids=list(dict.fromkeys(w&2047 for w in far))
 far_patterns=[patterns[i-16] for i in far_ids]
 far=[(w&0xf800)|(884+far_ids.index(w&2047)) for w in far]
-out+=arr('arena_walls','u16',fg)+arr('arena_far','u16',far)
+from map_strips import c_map
+out+=c_map('arena_walls',fg)+arr('arena_far','u16',far)
 near=[fg[y*256+x] for y in range(8,37) for x in range(72,169)]
 near_ids=list(dict.fromkeys(w&2047 for w in near))
 assert len(near_ids)<=828

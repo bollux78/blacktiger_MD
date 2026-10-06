@@ -13,7 +13,13 @@ def boot(saved=None):
  r=Runner(rom,skip_boot=False);m=memory(r)
  m[:]=bytes([255])*len(m)
  if saved is not None:m[:len(saved)]=saved
- r.run(180);return r
+ # SRAM must be installed before high_score_init; wait for the actual boot
+ # sequence, whose private-logo variant takes longer than the old 180 frames.
+ for _ in range(900):
+  r.run(1)
+  if r.read('boot_done',1)==b'\1':break
+ else:raise AssertionError('Boot did not finish before SRAM test')
+ r.run(60);return r
 def score(r):return int.from_bytes(r.read('high_score',4),'big')
 def award(r,n):
  r.write('high_score',0,n.to_bytes(4,'big'));r.run(10)

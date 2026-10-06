@@ -56,7 +56,8 @@ typedef struct {
 } WorldPatch;
 typedef struct {
     const u32 *patterns;
-    const u16 *map, *palette;
+    const u16 *const *map;
+    const u16 *palette;
     const u8 *collision;
     const Spawn *spawns;
     u16 pattern_count, spawn_count, width, height, start_x, start_y;

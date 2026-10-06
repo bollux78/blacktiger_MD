@@ -19,7 +19,7 @@ code=r'''
 typedef uint8_t u8;typedef uint16_t u16;typedef int16_t s16;
 static u16 visible[1800],visible_words[2048],terrain_width,terrain_height,terrain_shift;
 static u16 map_data[32768],remap0[2048],remap1[2048];
-static const u16 *terrain_map=map_data;
+static const u16 *terrain_map[1024];
 static u8 world_opened,world_rows[256],bonus_rows[128];
 static struct {const u16 *remap0,*remap1;} backdrop={remap0,remap1},*terrain_backdrop;
 static u8 wrap_y;
@@ -29,6 +29,7 @@ static unsigned random_word(void){rng^=rng<<13;rng^=rng>>17;rng^=rng<<5;return r
 /* Distinct dynamic results test both coordinates and conditional resolution. */
 static u16 world_word(u16 x,u16 y,u16 word){return (word&0xf800)|(16+(x*7+y*11+(word&2047))%1800);}
 '''
+code+=(ROOT/'inc/map_strips.h').read_text().replace('#include "game.h"','')
 for name in ('backdrop_word','dynamic_word','pin_column','pin_row'):
     code+=function(source,name)+'\n'
 code+=r'''
@@ -39,7 +40,7 @@ static void scalar_pin(s16 x,s16 y,s16 delta){
   if((u16)y>=terrain_height)word=0;
   else {
    u16 mx=(u16)x&(terrain_width-1);
-   word=terrain_map[((u16)y<<terrain_shift)+mx];
+   word=map_data[((u16)y<<terrain_shift)+mx];
    if((world_opened&world_rows[y]) || bonus_rows[y>>1])word=world_word(mx,y,word);
    word=backdrop_word(word);
   }
@@ -49,6 +50,7 @@ static void scalar_pin(s16 x,s16 y,s16 delta){
 }
 int main(void){
  unsigned trial,i;static u16 initial[2048],expected_words[2048],expected_counts[1800];
+ for(i=0;i<1024;i++)terrain_map[i]=map_data+i*32;
  for(i=0;i<32768;i++)map_data[i]=(random_word()&0xf800)|(random_word()%1816);
  for(i=0;i<2048;i++){remap0[i]=random_word()%1816;remap1[i]=random_word()%1816;}
  for(i=0;i<256;i++)world_rows[i]=random_word()&7;

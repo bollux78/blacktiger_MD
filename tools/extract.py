@@ -680,7 +680,16 @@ def main():
             for x in range(w*2):wm.append(world[(y//2)*w+x//2][(y&1)*2+(x&1)])
         assert len(unique)<1700,(r,len(unique))
         np.save(OUT/f'scenery{r}.npy',scenery)
-        emit(f'bg{r}',bytes(pats),'u32');emit(f'map{r}',words(wm));emit(f'pal{r}',words(palettes));emit(f'collision{r}',bytes(coll),'u8')
+        emit(f'bg{r}',bytes(pats),'u32')
+        # Preserve the full local map for independent artwork/collision oracles;
+        # only the deduplicated strip dictionary and ROM pointers are linked.
+        (OUT/f'map{r}.bin').write_bytes(words(wm));emitted.add(f'map{r}.bin')
+        from map_strips import pack_map,pointer_table
+        strips,indices=pack_map(wm)
+        emit(f'map{r}_strips',words([v for strip in strips for v in strip]))
+        decl.append(f'extern const u16 *const map{r}[];')
+        body.append(pointer_table(f'map{r}',indices))
+        emit(f'pal{r}',words(palettes));emit(f'collision{r}',bytes(coll),'u8')
         spawn=spawns[r];body.append(f'const Spawn spawn{r}[]={{'+','.join('{'+','.join(map(str,s))+'}' for s in spawn)+'};')
         preview.resize((w*8,h*8)).save(ROOT/f'reports/round{r+1}.png')
         report['rounds'].append({'round':r+1,'width':w*16,'height':h*16,'camera':[cx,cy],'layout':layout,'patterns':len(unique),'spawns':len(spawn),'collision_codes':dict(Counter(coll))})
