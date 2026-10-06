@@ -4,7 +4,7 @@ from pathlib import Path
 import argparse,hashlib,json,shutil
 ROOT=Path(__file__).resolve().parents[1]
 parser=argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--name',default='blacktiger_MD_v1.7.bin')
+parser.add_argument('--name',default='blacktiger_MD_v'+(ROOT/'VERSION').read_text().strip()+'.bin')
 args=parser.parse_args()
 assert Path(args.name).name==args.name and args.name.endswith('.bin'),'Expected a ROM filename'
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()

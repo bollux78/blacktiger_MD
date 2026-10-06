@@ -15,6 +15,7 @@ __pycache__/
 /src/*.inc
 /src/data.c
 /src/actor_dispatch.c
+/src/private_boot/
 
 # Private releases, captures, and original-ROM observations
 /dist/

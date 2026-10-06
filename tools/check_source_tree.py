@@ -12,6 +12,7 @@ for name in filter(None,paths):
      name.startswith(('assets/source/','assets/ui/','res/generated/')) or
      (p.parts[0] in ('reference','reports') and p.suffix!='.md') or
      (p.parts[0]=='src' and p.suffix=='.inc') or
+     name.startswith('src/private_boot/') or
      name in ('src/data.c','src/actor_dispatch.c','inc/assets.h','res/assets.res','res/assets.h','src/sega_chant.c','src/sega_logo_shinobi.c','src/capcom_logo.c') or
      p.suffix.lower() in ('.bin','.rom','.zip','.wav','.mp3','.gif','.gz')):
   violations.append(name)

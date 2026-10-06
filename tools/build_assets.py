@@ -20,7 +20,7 @@ def main():
     inputs = sorted(set((ROOT/'tools').glob('*.py')) | set((ROOT/'tools').glob('*.lua')))
     inputs += [ROOT/'assets/board.json', ROOT/'assets/rom_manifest.json',
                ROOT/'art/black_tiger_md_logo_concept.png', ROOT/'art/yashichi.png',
-               ROOT/'reference/.source-data.json']
+               ROOT/'reference/.source-data.json', ROOT/'VERSION']
     signature = hashlib.sha256(''.join(digest(p) for p in inputs).encode()).hexdigest()
     stamp = ROOT/'.local/assets-build.json'
     old = json.loads(stamp.read_text()) if stamp.exists() else {}
