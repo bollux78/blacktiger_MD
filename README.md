@@ -1,3 +1,95 @@
+## 🎨 Dithering Lab 2.0 — Color Conversion for Sega Mega Drive
+
+**Ferramentas experimentais de conversão de cores, quantização e dithering para o port de Black Tiger desenvolvido por [rester159](https://github.com/rester159/blacktiger_MD).**
+
+O objetivo é explorar como adaptar gráficos de arcades e outras plataformas às limitações de cores do Mega Drive, preservando o máximo possível da aparência original.
+
+Além de melhorar os gráficos de Black Tiger, o projeto oferece código e algoritmos que podem servir como referência para outros ports e homebrews.
+
+### 🕹️ O desafio: do arcade para o Mega Drive
+
+O hardware do Mega Drive trabalha com cores RGB de 3 bits por canal e paletas de 16 entradas, normalmente com uma entrada reservada para transparência.
+
+Já os gráficos do arcade original utilizam uma organização diferente de paletas e cores.
+
+Não basta copiar os pixels: é necessário escolher quais cores preservar, quais substituir e como representar tonalidades intermediárias.
+
+### 🔄 Como funciona a conversão
+
+O processo implementado no projeto segue estas etapas:
+
+**1. Extração dos gráficos originais**
+
+Os tiles e suas paletas são extraídos dos dados do arcade, fornecidos localmente pelo usuário.
+
+**2. Quantização e seleção de paletas**
+
+As cores são analisadas e agrupadas. Para os cenários, o conversor calcula duas paletas de destino por fase, com 15 cores utilizáveis em cada uma, além da entrada zero.
+
+A seleção procura reduzir o erro entre as cores originais e as disponíveis no Mega Drive.
+
+**3. Aplicação de dithering**
+
+Quando uma cor não pode ser reproduzida diretamente, o algoritmo pode alternar duas cores disponíveis em um padrão espacial, criando a percepção de uma tonalidade intermediária.
+
+**4. Conversão para tiles nativos**
+
+Os gráficos convertidos são organizados em tiles de 8×8 pixels, compatíveis com o hardware, e integrados ao processo de geração da ROM.
+
+### 🧪 Algoritmos disponíveis
+
+| Modo | Funcionamento |
+|---|---|
+| **Original** | Conversão direta para a cor mais próxima, sem dithering experimental |
+| **Bayer 4×4** | Distribui duas cores usando uma matriz ordenada de 4×4 pixels |
+| **Bayer Balanced** | Aplica o dithering de maneira seletiva, limitando alterações de contraste e cor |
+| **Bayer Adaptive** | Avalia o ganho na aproximação das cores e evita misturas que possam prejudicar detalhes e contornos |
+
+O Bayer Adaptive é especialmente interessante para pixel art: nem sempre uma mistura matematicamente mais próxima produz um resultado visual melhor.
+
+Por isso, o algoritmo considera também diferenças de luminância, contraste e erro de cor.
+
+### 🔍 Edição visual com o Dithering Lab 2.0
+
+A interface permite:
+
+- Visualizar os gráficos e comparar diferentes conversões.
+- Selecionar tiles individuais e aplicar tratamentos específicos.
+- Ajustar parâmetros dos algoritmos.
+- Experimentar combinações manuais de cores.
+- Salvar e carregar perfis de configuração em JSON.
+- Gerar ROMs para testar os resultados no jogo.
+
+**Os algoritmos puros permanecem disponíveis:** as personalizações por tile só são aplicadas à compilação quando um perfil correspondente é carregado.
+
+### 🧩 Código para estudar e reutilizar
+
+As principais implementações estão disponíveis em:
+
+| Arquivo | Conteúdo |
+|---|---|
+| [`tools/dither_bg.py`](tools/dither_bg.py) | Algoritmos Bayer, Balanced e Adaptive |
+| [`tools/dither_tile_policy.py`](tools/dither_tile_policy.py) | Parâmetros, regras por tile e misturas manuais |
+| [`tools/dither_lab_v2.py`](tools/dither_lab_v2.py) | Interface gráfica de experimentação |
+| [`tools/extract.py`](tools/extract.py) | Extração, quantização e integração dos gráficos |
+| [`tools/build_assets.py`](tools/build_assets.py) | Geração dos recursos utilizados na compilação |
+
+Os algoritmos podem ser estudados e adaptados para outros projetos. A integração completa, entretanto, depende do formato gráfico e da organização de paletas de cada jogo.
+
+### 🚀 Para quem é este projeto?
+
+Para desenvolvedores de homebrew, autores de ports, artistas de pixel art e qualquer pessoa interessada em compreender como gráficos de diferentes plataformas podem ser adaptados ao Mega Drive.
+
+**A proposta é experimentar, comparar resultados e compartilhar conhecimento sobre conversão gráfica para o console.**
+
+### 🙌 Créditos
+
+O port original de Black Tiger para Mega Drive é desenvolvido por **[rester159](https://github.com/rester159/blacktiger_MD)**.
+
+O Dithering Lab 2.0 e as ferramentas experimentais de personalização gráfica foram desenvolvidos como uma extensão desse trabalho.
+
+*Projeto experimental em desenvolvimento. Sugestões, testes e contribuições são bem-vindos!*
+
 # Black Tiger MD — source-only v1.7
 
 Arcade now opens into the original ranking/title/demo sequence. Its Top 5 and title header display SRAM-backed records; demo playback cannot earn scores, overwrite initials, or spend credits. Press Start to insert a coin, A to start, Up/Down for DIP switches, and B to return to the mode selector. Arcade returns to attract after game over (and after confirming qualifying initials).
