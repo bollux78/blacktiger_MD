@@ -26,3 +26,28 @@ __pycache__/
 !/reference/*.md
 /art/front.png
 /art/front_black_background.png
+
+# Black Tiger MD cleanup: generated binaries and local backups
+/roms/
+*.bak
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# Dithering Lab - configuracoes pessoais
+/blacktiger_perfil_*.json
+/tools/tile_dither_rules.json
+/tools/no_dither_tiles.json
+/tools/shop_palette_override.json
+/tools/dither_lab_language.json
+
+# ROMs, caches, sessoes e backups locais
+/roms/
+/.local/
+/.venv/
+/out/
+*.pyc
+*.bak
+*.bak.*
+/.gitignore.antes_limpeza

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Black Tiger MD - Dithering Lab
+Comment=Visual map editor (Portuguese / English)
+Exec="/home/dan/Projetos/blacktiger_MD/.venv/bin/python" "/home/dan/Projetos/blacktiger_MD/tools/dither_lab_v2.py"
+Path=/home/dan/Projetos/blacktiger_MD
+Terminal=false
+Icon=applications-games
+Categories=Development;Game;

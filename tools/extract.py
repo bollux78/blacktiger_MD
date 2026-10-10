@@ -10,6 +10,9 @@ from pathlib import Path
 from collections import Counter
 import numpy as np
 from PIL import Image, ImageDraw
+from dither_tile_policy import load_stage, adaptive_custom, render_custom_mode, apply_palette_overrides  # BLACKTIGER_PALETTE_EDITOR_V1  # BLACKTIGER_MULTIMODE_SLIDERS_V1
+from dither_bg import convert as dither_convert, convert_soft as dither_convert_soft
+from dither_bg import convert_adaptive as dither_convert_adaptive
 from arcade_source import Source
 from extract_pair import extract as extract_pair
 from extract_boulder import extract as extract_boulder
@@ -88,6 +91,9 @@ def pack(a):
 def main():
     ap=argparse.ArgumentParser();ap.add_argument('--source',type=Path,default=Path(os.environ.get('BLACKTIGER_SOURCE',DEFAULT)));args=ap.parse_args()
     os.environ['BLACKTIGER_SOURCE']=str(args.source.resolve())
+    dither_mode=os.environ.get('BLACKTIGER_DITHER','original').lower()
+    if dither_mode not in ('original', 'bayer4', 'bayer4_soft', 'bayer4_adaptive'):
+        raise ValueError('BLACKTIGER_DITHER must be original, bayer4, bayer4_soft or bayer4_adaptive')
     source=Source(args.source);lock=source.lock;files=source.files
     board=json.loads((ROOT/'assets/board.json').read_text())
     def read(bank,pc,n):
@@ -540,7 +546,74 @@ def main():
         palettes=[];pm=[]
         for c in cp:palettes += [0]+[int(v[0]*2+v[1]*32+v[2]*512) for v in c]
         for p in range(16):pm.append([int(((cp[groups[p]]-rgb(c))**2).sum(1).argmin())+1 for c in colors[p*16:p*16+16]])
+        # BLACKTIGER_NO_DITHER_TILES_V1
+        import json as _nd_json
+        from pathlib import Path as _nd_Path
+        # BLACKTIGER_PURE_UNTIL_JSON_V1: perfil isolado por compilação.
+        # legacy permite comportamento antigo somente por opção explícita.
+        _profile = os.environ.get('BLACKTIGER_TILE_PROFILE', 'pure')
+        if _profile not in ('legacy', 'pure', 'loaded'):
+            raise ValueError('BLACKTIGER_TILE_PROFILE inválido: ' + _profile)
+        if _profile == 'pure':
+            _nd_data = {}
+            _dl_rules = {}
+        else:
+            _nd_file = (_nd_Path(os.environ['BLACKTIGER_NO_DITHER_FILE'])
+                        if _profile == 'loaded' else
+                        _nd_Path(__file__).with_name('no_dither_tiles.json'))
+            _nd_data = _nd_json.loads(_nd_file.read_text()) if _nd_file.exists() else {}
+            _dl_file = (_nd_Path(os.environ['BLACKTIGER_TILE_RULES_FILE'])
+                        if _profile == 'loaded' else ROOT/'tools/tile_dither_rules.json')
+            _dl_rules = load_stage(_dl_file, r)
+        _nd_codes = set(map(int, _nd_data.get(str(r), [])))
+        bg_cache={}
+        def convert_bg(code,p,source_pens=None):
+            key=(code,p,source_pens is not None)
+            if key in bg_cache:return bg_cache[key].copy()
+            pens=tiles[code] if source_pens is None else source_pens
+            _tile_rule=_dl_rules.get(code)
+            # O modo global original desativa qualquer dithering por tile.
+            # Nos demais modos, as regras individuais continuam prioritarias.
+            _tile_mode=(dither_mode if dither_mode=='original' else
+                        (_tile_rule['mode'] if _tile_rule is not None else dither_mode))
+            if code in _nd_codes:_tile_mode='original'
+            if _tile_mode=='original':
+                result=np.array(pm[p],dtype=np.uint8)[pens]
+                bg_cache[key]=result
+                return result.copy()
+            source_colors=np.array([rgb(c) for c in colors[p*16:p*16+16]])
+            _mapping=np.array(pm[p],dtype=np.uint8)
+            if _tile_mode=='bayer4_soft':
+                if _tile_rule is not None and 'parameters' in _tile_rule:
+                    result=render_custom_mode(_tile_mode,pens,source_colors,cp[groups[p]],_mapping,_tile_rule['parameters'])
+                else:
+                    result=dither_convert_soft(pens,source_colors,cp[groups[p]],_mapping)
+            elif _tile_mode=='bayer4_adaptive':
+                if _tile_rule is not None and 'parameters' in _tile_rule:
+                    result=adaptive_custom(pens,source_colors,cp[groups[p]],_mapping,_tile_rule['parameters'])
+                else:
+                    result=dither_convert_adaptive(pens,source_colors,cp[groups[p]],_mapping)
+            elif _tile_mode=='bayer4':
+                if _tile_rule is not None and 'parameters' in _tile_rule:
+                    result=render_custom_mode(_tile_mode,pens,source_colors,cp[groups[p]],_mapping,_tile_rule['parameters'])
+                else:
+                    result=dither_convert(pens,source_colors,cp[groups[p]])
+            else:
+                raise ValueError('Modo de tile desconhecido: '+str(_tile_mode))
+            # Bayer manual: por paleta ORIGINAL e pen ORIGINAL, sem alterar
+            # a escolha automatica dos demais pixels.
+            if _tile_rule is not None and _tile_rule.get('palette_overrides'):
+                _pal_rules=_tile_rule['palette_overrides'].get(str(p),{})
+                if _pal_rules:
+                    result=apply_palette_overrides(result,pens,_mapping,_pal_rules)
+            # Source pen 15 is transparent in rounds 5 and 7.
+            if r in (4,6):result[pens==15]=0
+            bg_cache[key]=result
+            return result.copy()
         pats=bytearray();unique={};torch_variants={};world=[];coll=[];scenery=np.zeros((h*16,w*16),np.uint8);preview=Image.new('RGB',(w*16,h*16))
+        source_code_grid=np.zeros((h,w),dtype=np.uint16)
+        source_palette_grid=np.zeros((h,w),dtype=np.uint8)
+        source_flip_grid=np.zeros((h,w),dtype=np.uint8)
         for y in range(h):
             for x in range(w):
                 idx=(x&15)|((y&15)<<4)|((x&(0x70 if layout else 0x30))<<4)|((y&(0x30 if layout else 0x70))<<(7 if layout else 6))
@@ -559,7 +632,10 @@ def main():
                             round=5,x=x*16,y=y*16,source_tile=code,
                             original=collision[code],replacement=value,
                             reason='Solid raised column cap above solid shaft'))
-                coll.append(value);pix=np.array(pm[p],dtype=np.uint8)[tiles[code]]
+                source_code_grid[y,x]=code
+                source_palette_grid[y,x]=p
+                source_flip_grid[y,x]=int(flip)
+                coll.append(value);pix=convert_bg(code,p)
                 # Preserve source transparency before palette quantization loses
                 # its identity. Decorative tiles are identified by ROM code,
                 # never by shared colors or by where a window happens to sit.
@@ -578,7 +654,7 @@ def main():
                     # The palace flames cycle locally; reserve their textures
                     # so shared brass/stone pixels never inherit the flicker.
                     flame=np.arange(16,dtype=np.uint8);flame[[0,1,2,3,8]]=[3,8,0,2,1]
-                    alternate=np.array(pm[p],dtype=np.uint8)[flame[tiles[code]]]
+                    alternate=convert_bg(code,p,flame[tiles[code]])
                     if flip:alternate=alternate[:,::-1]
                 ws=[]
                 for oy,ox in ((0,0),(0,8),(8,0),(8,8)):
@@ -596,7 +672,7 @@ def main():
                     ws.append((unique[key]+16)|(int(groups[p])<<13)|flags)
                 world.append(ws)
         # Hidden terrain uses the source's tile 0 / palette 6 replacement.
-        opened=np.array(pm[6],dtype=np.uint8)[tiles[0]];open_words=[]
+        opened=convert_bg(0,6);open_words=[]
         if r in (4,6):opened[tiles[0]==15]=0
         for oy,ox in ((0,0),(0,8),(8,0),(8,8)):
             cell=opened[oy:oy+8,ox:ox+8]
@@ -625,7 +701,7 @@ def main():
                 for m in phase_maps:
                     tile=m.get(offset,int.from_bytes(raw[offset:offset+2],'little'))
                     code=(tile&255)|((tile>>8&7)<<8);p=tile>>11&15
-                    pix=np.array(pm[p],dtype=np.uint8)[tiles[code]]
+                    pix=convert_bg(code,p)
                     if r in (4,6):pix[tiles[code]==15]=0
                     if r==4 and 0x380<=code<=0x3df:pix[:]=0
                     if r==6 and (0x580<=code<=0x59f or code==0x500):pix[:]=0
@@ -650,7 +726,7 @@ def main():
                 idx=(x&15)|((y&15)<<4)|((x&(0x70 if layout else 0x30))<<4)|((y&(0x30 if layout else 0x70))<<(7 if layout else 6))
                 if idx*2 not in boss_writes:continue
                 tile=boss_writes[idx*2];code=tile&0x7ff;p=tile>>11&15
-                pix=np.array(pm[p],dtype=np.uint8)[tiles[code]]
+                pix=convert_bg(code,p)
                 if r==4:pix[tiles[code]==15]=0
                 if r==4 and 0x380<=code<=0x3df:pix[:]=0
                 if tile&0x8000:pix=pix[:,::-1]
@@ -679,6 +755,17 @@ def main():
         for y in range(h*2):
             for x in range(w*2):wm.append(world[(y//2)*w+x//2][(y&1)*2+(x&1)])
         assert len(unique)<1700,(r,len(unique))
+        (ROOT/'reports').mkdir(parents=True,exist_ok=True)
+        np.save(ROOT/'reports'/f'tile_selector_codes{r}.npy',source_code_grid)
+        preview.save(ROOT/'reports'/f'tile_selector_stage{r+1}.png')
+        # DITHER_LAB_V2_METADATA
+        np.savez_compressed(ROOT/'reports'/f'dither_lab_source{r}.npz',
+            tiles=np.asarray(tiles,dtype=np.uint8),
+            source_palettes=np.asarray([rgb(c) for c in colors[:256]],dtype=np.uint8).reshape(16,16,3),
+            target_palettes=np.asarray(cp,dtype=np.uint8),
+            mappings=np.asarray(pm,dtype=np.uint8),
+            groups=np.asarray(groups,dtype=np.uint8),
+            codes=source_code_grid,palettes=source_palette_grid,flips=source_flip_grid)
         np.save(OUT/f'scenery{r}.npy',scenery)
         emit(f'bg{r}',bytes(pats),'u32')
         # Preserve the full local map for independent artwork/collision oracles;
@@ -692,7 +779,7 @@ def main():
         emit(f'pal{r}',words(palettes));emit(f'collision{r}',bytes(coll),'u8')
         spawn=spawns[r];body.append(f'const Spawn spawn{r}[]={{'+','.join('{'+','.join(map(str,s))+'}' for s in spawn)+'};')
         preview.resize((w*8,h*8)).save(ROOT/f'reports/round{r+1}.png')
-        report['rounds'].append({'round':r+1,'width':w*16,'height':h*16,'camera':[cx,cy],'layout':layout,'patterns':len(unique),'spawns':len(spawn),'collision_codes':dict(Counter(coll))})
+        report['rounds'].append({'dither':dither_mode,'round':r+1,'width':w*16,'height':h*16,'camera':[cx,cy],'layout':layout,'patterns':len(unique),'spawns':len(spawn),'collision_codes':dict(Counter(coll))})
     body.append('const BossTerrain boss_terrain[8]={'+','.join(boss_terrain_definitions)+'};')
     body.append('const BonusRound bonus_rounds[8]={'+','.join(bonus_definitions)+'};')
     body.append('const Round rounds[8]={'+',\n'.join('{%s,map%d,pal%d,collision%d,spawn%d,%d,%d,%d,%d,%d,%d,patches%d,open_tile%d,%d,%d}'%(f'bg{r}',r,r,r,r,d['patterns'],d['spawns'],d['width'],d['height'],*d['camera'],r,r,len(hidden['rounds'][r]),collision[0]) for r,d in enumerate(report['rounds']))+'};')

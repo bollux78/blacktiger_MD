@@ -72,6 +72,17 @@ for _ in range(5):
  costs=np.array([((COL[:,None,:]-bank[None,:,:])**2).sum(2).min(1) for bank in banks])
  groups=(hist@costs.T).argmin(1)
 banks=[np.vstack(([0,0,0],quant(hist[groups==g].sum(0) if hist[groups==g].any() else hist.sum(0)))) for g in range(2)]
+# SHOP_PALETTE_LAB_V1: aplicar paleta exclusiva da loja (RGB333)
+shop_palette_override_file=ROOT/'tools/shop_palette_override.json'
+if shop_palette_override_file.is_file():
+ shop_palette_override=json.loads(shop_palette_override_file.read_text(encoding='utf-8'))
+ if 'banks' in shop_palette_override:
+  override=np.asarray(shop_palette_override['banks'],dtype=np.int32)
+  if (override.shape!=(2,16,3) or np.any(override<0) or np.any(override>7)
+      or np.any(override[:,0,:]!=0)):
+   raise ValueError('Paleta da loja invalida: esperado 2 x 16 cores RGB333, indices 0 em preto')
+  banks=[override[0],override[1]]
+# SHOP_PALETTE_LAB_END
 back_tiles=[];back_lookup={};back_map=[];preview=np.zeros((224,256,3),np.uint8)
 for y in range(0,224,8):
  for x in range(0,256,8):

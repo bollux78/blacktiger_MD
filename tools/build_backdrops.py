@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 from arcade_source import ROOT
 from extract import pack
+from stage4_used_tiles import stage4_required_pairs
 
 def array(name,typ,v):return f'static const {typ} {name}[]={{'+','.join(map(str,v))+'};\n'
 def patterns(name,data):return array(name,'u32',[hex(int.from_bytes(b[i:i+4],'big')) for b in data for i in range(0,32,4)])
@@ -23,9 +24,14 @@ for level in (3,4,6):
    canvas[y*8:y*8+8,x*8:x*8+8]=t+((word>>13)&1)*16
  if level in (4,5,6):canvas=np.load(ROOT/f'res/generated/scenery{level}.npy')
  extra=[];lookup={b:i for i,b in enumerate(rawtiles)};remaps=[]
+ required_pairs=stage4_required_pairs(ROOT,n) if level==3 else None
  for bank in range(2):
   remap=list(range(16))
   for i,tile in enumerate(tiles):
+   # STAGE4_USED_ONLY: preserve all runtime-referenced palette/tile pairs
+   if required_pairs is not None and (bank,i+16) not in required_pairs:
+    remap.append(i+16)  # Unreachable combination; never used by engine.
+    continue
    indexed=tile+bank*16;changed=tile.copy()
    if level==3:
     changed[np.isin(indexed,[4,7,10,14,20])]=0
