@@ -90,6 +90,16 @@ O Dithering Lab 2.0 e as ferramentas experimentais de personalização gráfica 
 
 *Projeto experimental em desenvolvimento. Sugestões, testes e contribuições são bem-vindos!*
 
+## 📸 Dithering Lab 2.0 — Screenshots
+
+### Visual Tile Editor
+
+![Dithering Lab 2.0 — Tile Editor](docs/images/Captura_de_tela_20261010_191406.png)
+
+### Dithering Configuration
+
+![Dithering Lab 2.0 — Configuration](docs/images/Captura_de_tela_20261010_191513.png)
+
 
 ENGLISH VERSION
 ## 🎨 Dithering Lab 2.0 — Color Conversion for Sega Mega Drive / Genesis
