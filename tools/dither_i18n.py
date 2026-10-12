@@ -103,6 +103,19 @@ TEXT = {
     'Pixels da cor secundária (%)': 'Secondary-color pixels (%)',
     'Aplicar ao código no editor': 'Apply to tile code in editor',
     'Fechar (manter prévia)': 'Close (keep preview)',
+    'Copiar par': 'Copy pair',
+    'Colar par': 'Paste pair',
+    'Par copiado. Selecione outro pen ou tile para colar.':
+        'Pair copied. Select another pen or tile to paste.',
+    'Par colado na prévia. Aplique ao código para confirmar.':
+        'Pair pasted into preview. Apply to tile code to confirm.',
+    'Selecione Par manual antes de copiar as duas cores.':
+        'Select Manual pair before copying both colors.',
+    'Paleta diferente': 'Different palette',
+    'A paleta de destino é diferente da paleta copiada. '
+    'Os índices de cor podem representar outras cores. Colar mesmo assim?':
+        'The target palette differs from the copied palette. '
+        'Color indices may represent different colors. Paste anyway?',
     'Automático: o algoritmo escolhe o par para este pen.':
         'Automatic: the algorithm chooses the color pair for this pen.',
     'Black Tiger MD — Par de cores Bayer por pen': 'Black Tiger MD — Bayer color pair per pen',
@@ -482,7 +495,7 @@ class LanguageMixin:
                 expected=('Stage ' if lang=='en' else 'Fase ')+match.group(1)
                 if current!=expected:
                     self.stage_string.set(expected)
-        for variable_name in ('info','tile_info','edited_flag','state_value'):
+        for variable_name in ('info','tile_info','edited_flag','state_value','color_clip_status'):
             var=getattr(self,variable_name,None)
             if var is None:
                 continue
