@@ -72,6 +72,7 @@ class LabV2(Lab):
         self.palette_overrides = {}
         self.color_window = None
         self.color_requested_pen = None
+        self.color_pair_clipboard = None  # Copied pair survives tile, pen and stage changes.
         self.stage_string = tk.StringVar(value='Fase 1')
         self.zoom = tk.IntVar(value=1)
         self.tile_mode = tk.StringVar(value='inherit')
@@ -662,10 +663,16 @@ class LabV2(Lab):
         self.color_mix_scale.pack(side='left',fill='x',expand=True)
         self.color_result_label=ttk.Label(frame,text='',foreground='#555',wraplength=720)
         self.color_result_label.pack(anchor='w',pady=(8,3))
+        self.color_clip_status=tk.StringVar(value='')
+        ttk.Label(frame,textvariable=self.color_clip_status,foreground='#555').pack(anchor='w',pady=(2,0))
         footer=ttk.Frame(frame)
         footer.pack(fill='x',pady=8)
         ttk.Button(footer,text='Aplicar ao código no editor',command=self._color_apply_and_close).pack(side='right',padx=6)
         ttk.Button(footer,text='Fechar (manter prévia)',command=self.close_color_editor).pack(side='right')
+        ttk.Button(footer,text='Copiar par',command=self._color_copy_pair).pack(side='left',padx=(0,6))
+        self.color_paste_button=ttk.Button(footer,text='Colar par',command=self._color_paste_pair,
+                                           state='normal' if self.color_pair_clipboard else 'disabled')
+        self.color_paste_button.pack(side='left')
         pens=self._valid_source_pens()
         pen=getattr(self,'color_requested_pen',None)
         if pen not in pens:
@@ -678,6 +685,48 @@ class LabV2(Lab):
     def _color_apply_and_close(self):
         self.apply_tile()
         self.close_color_editor()
+
+    def _color_copy_pair(self):
+        """Keep the selected manual pair in memory for reuse across tiles."""
+        if self.color_kind.get() != 'pair':
+            messagebox.showinfo('Copiar par',
+                                'Selecione Par manual antes de copiar as duas cores.',
+                                parent=self.color_window)
+            return
+        palette=tuple(tuple(map(int, rgb)) for rgb in self._palette_target())
+        self.color_pair_clipboard={
+            'primary':int(self.color_primary.get()),
+            'secondary':int(self.color_secondary.get()),
+            'mix':float(self.color_mix.get()),
+            'palette':palette,
+        }
+        self.color_paste_button.configure(state='normal')
+        self.color_clip_status.set('Par copiado. Selecione outro pen ou tile para colar.')
+
+    def _color_paste_pair(self):
+        """Paste a manual pair into the selected source pen, updating its live preview."""
+        saved=self.color_pair_clipboard
+        if not saved or self.current is None:
+            return
+        palette=tuple(tuple(map(int, rgb)) for rgb in self._palette_target())
+        if palette != saved['palette']:
+            if not messagebox.askyesno(
+                'Paleta diferente',
+                'A paleta de destino é diferente da paleta copiada. '
+                'Os índices de cor podem representar outras cores. Colar mesmo assim?',
+                parent=self.color_window
+            ):
+                return
+        self._color_sync=True
+        try:
+            self.color_primary.set(saved['primary'])
+            self.color_secondary.set(saved['secondary'])
+            self.color_mix.set(saved['mix'])
+            self.color_kind.set('pair')
+        finally:
+            self._color_sync=False
+        self._color_rule_changed()
+        self.color_clip_status.set('Par colado na prévia. Aplique ao código para confirmar.')
 
     def _color_sync_dialog(self):
         if self.current is None or self.color_window is None or not self.color_window.winfo_exists():
